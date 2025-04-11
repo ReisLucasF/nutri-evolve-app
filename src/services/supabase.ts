@@ -1,12 +1,11 @@
-
 import { Nutricionista, Paciente } from '@/models';
-const database = require('./database.js');
+import { executeQuery } from './database.js';
 
 // Nutritionist Services
 export const nutritionistService = {
   async getAll(): Promise<Nutricionista[]> {
     try {
-      const result = await database.executeQuery('SELECT * FROM nutritionists', []);
+      const result = await executeQuery('SELECT * FROM nutritionists', []);
       
       return result.rows.map((item: any) => ({
         id: item.id,
@@ -26,7 +25,7 @@ export const nutritionistService = {
   
   async getById(id: string): Promise<Nutricionista | null> {
     try {
-      const result = await database.executeQuery('SELECT * FROM nutritionists WHERE id = $1', [id]);
+      const result = await executeQuery('SELECT * FROM nutritionists WHERE id = $1', [id]);
       
       if (result.rows.length === 0) return null;
       
@@ -49,7 +48,7 @@ export const nutritionistService = {
   
   async create(nutritionist: Omit<Nutricionista, 'id' | 'createdAt'>): Promise<Nutricionista> {
     try {
-      const result = await database.executeQuery(
+      const result = await executeQuery(
         `INSERT INTO nutritionists (nome, email, crn, telefone, especialidade, foto)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING *`,
@@ -82,7 +81,7 @@ export const nutritionistService = {
   
   async update(id: string, nutritionist: Partial<Nutricionista>): Promise<Nutricionista> {
     try {
-      const result = await database.executeQuery(
+      const result = await executeQuery(
         `UPDATE nutritionists
          SET nome = $1, email = $2, crn = $3, telefone = $4, especialidade = $5, foto = $6
          WHERE id = $7
@@ -117,7 +116,7 @@ export const nutritionistService = {
   
   async delete(id: string): Promise<void> {
     try {
-      await database.executeQuery('DELETE FROM nutritionists WHERE id = $1', [id]);
+      await executeQuery('DELETE FROM nutritionists WHERE id = $1', [id]);
     } catch (error: any) {
       console.error(`Error deleting nutritionist with id ${id}:`, error);
       throw new Error(error.message);
@@ -129,7 +128,7 @@ export const nutritionistService = {
 export const patientService = {
   async getAll(): Promise<Paciente[]> {
     try {
-      const result = await database.executeQuery('SELECT * FROM patients', []);
+      const result = await executeQuery('SELECT * FROM patients', []);
       
       return result.rows.map((item: any) => ({
         id: item.id,
@@ -152,7 +151,7 @@ export const patientService = {
   
   async getById(id: string): Promise<Paciente | null> {
     try {
-      const result = await database.executeQuery('SELECT * FROM patients WHERE id = $1', [id]);
+      const result = await executeQuery('SELECT * FROM patients WHERE id = $1', [id]);
       
       if (result.rows.length === 0) return null;
       
@@ -178,7 +177,7 @@ export const patientService = {
   
   async create(patient: Omit<Paciente, 'id' | 'createdAt'>): Promise<Paciente> {
     try {
-      const result = await database.executeQuery(
+      const result = await executeQuery(
         `INSERT INTO patients (
           nutricionista_id, nome, email, data_nascimento, sexo, 
           telefone, endereco, observacoes, foto
@@ -219,7 +218,7 @@ export const patientService = {
   
   async update(id: string, patient: Partial<Paciente>): Promise<Paciente> {
     try {
-      const result = await database.executeQuery(
+      const result = await executeQuery(
         `UPDATE patients
          SET nutricionista_id = $1, nome = $2, email = $3, data_nascimento = $4,
              sexo = $5, telefone = $6, endereco = $7, observacoes = $8, foto = $9
@@ -261,7 +260,7 @@ export const patientService = {
   
   async delete(id: string): Promise<void> {
     try {
-      await database.executeQuery('DELETE FROM patients WHERE id = $1', [id]);
+      await executeQuery('DELETE FROM patients WHERE id = $1', [id]);
     } catch (error: any) {
       console.error(`Error deleting patient with id ${id}:`, error);
       throw new Error(error.message);

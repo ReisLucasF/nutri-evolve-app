@@ -1,5 +1,6 @@
 
-const { Pool } = require('pg');
+import pkg from 'pg';
+const { Pool } = pkg;
 
 // Configuração direta da conexão com o PostgreSQL usando a URI
 const connectionString = 'postgresql://nutriappdb_owner:npg_GSmYLI80pQMs@ep-green-fog-acl7wliu-pooler.sa-east-1.aws.neon.tech/nutriappdb?sslmode=require';
@@ -29,7 +30,7 @@ const executeQuery = async (text, params) => {
   }
 };
 
-module.exports = {
+export {
   executeQuery,
   pool
 };
