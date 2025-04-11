@@ -1,21 +1,75 @@
+
 import { Nutricionista, Paciente } from '@/models';
-import { executeQuery } from './database.js';
+
+// Base URL for your API - replace with your actual API endpoint
+const API_BASE_URL = 'https://your-api-endpoint.com/api';
+
+// Utility function for making API requests
+const fetchAPI = async (endpoint: string, options = {}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      ...options,
+    });
+    
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || `API call failed with status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error: any) {
+    console.error('API request failed:', error);
+    throw error;
+  }
+};
+
+// TEMPORARY SOLUTION FOR DEVELOPMENT
+// This allows us to simulate API calls in the browser without a real backend
+// Replace this with actual API calls when you have a backend
+const mockDatabase = {
+  nutritionists: JSON.parse(localStorage.getItem('nutritionists') || '[]'),
+  patients: JSON.parse(localStorage.getItem('patients') || '[]'),
+  
+  saveNutritionists() {
+    localStorage.setItem('nutritionists', JSON.stringify(this.nutritionists));
+  },
+  
+  savePatients() {
+    localStorage.setItem('patients', JSON.stringify(this.patients));
+  }
+};
+
+// Initial data population if empty
+if (mockDatabase.nutritionists.length === 0) {
+  mockDatabase.nutritionists = [
+    {
+      id: '1',
+      nome: 'Nutricionista Exemplo',
+      email: 'nutri@example.com',
+      crn: 'CRN-5 12345',
+      telefone: '(71) 98765-4321',
+      especialidade: 'Nutrição Esportiva',
+      foto: null,
+      createdAt: new Date().toISOString()
+    }
+  ];
+  mockDatabase.saveNutritionists();
+}
 
 // Nutritionist Services
 export const nutritionistService = {
   async getAll(): Promise<Nutricionista[]> {
     try {
-      const result = await executeQuery('SELECT * FROM nutritionists', []);
+      // In production, this would be a fetch call:
+      // const data = await fetchAPI('/nutritionists');
       
-      return result.rows.map((item: any) => ({
-        id: item.id,
-        nome: item.nome,
-        email: item.email,
-        crn: item.crn,
-        telefone: item.telefone,
-        especialidade: item.especialidade,
-        foto: item.foto,
-        createdAt: new Date(item.created_at)
+      // For development, use the mock implementation:
+      return mockDatabase.nutritionists.map(item => ({
+        ...item,
+        createdAt: new Date(item.createdAt)
       }));
     } catch (error: any) {
       console.error('Error fetching nutritionists:', error);
@@ -25,20 +79,16 @@ export const nutritionistService = {
   
   async getById(id: string): Promise<Nutricionista | null> {
     try {
-      const result = await executeQuery('SELECT * FROM nutritionists WHERE id = $1', [id]);
+      // In production:
+      // const data = await fetchAPI(`/nutritionists/${id}`);
       
-      if (result.rows.length === 0) return null;
+      // For development:
+      const item = mockDatabase.nutritionists.find(n => n.id === id);
+      if (!item) return null;
       
-      const item = result.rows[0];
       return {
-        id: item.id,
-        nome: item.nome,
-        email: item.email,
-        crn: item.crn,
-        telefone: item.telefone,
-        especialidade: item.especialidade,
-        foto: item.foto,
-        createdAt: new Date(item.created_at)
+        ...item,
+        createdAt: new Date(item.createdAt)
       };
     } catch (error: any) {
       console.error(`Error fetching nutritionist with id ${id}:`, error);
@@ -48,30 +98,25 @@ export const nutritionistService = {
   
   async create(nutritionist: Omit<Nutricionista, 'id' | 'createdAt'>): Promise<Nutricionista> {
     try {
-      const result = await executeQuery(
-        `INSERT INTO nutritionists (nome, email, crn, telefone, especialidade, foto)
-         VALUES ($1, $2, $3, $4, $5, $6)
-         RETURNING *`,
-        [
-          nutritionist.nome,
-          nutritionist.email,
-          nutritionist.crn,
-          nutritionist.telefone || null,
-          nutritionist.especialidade || null,
-          nutritionist.foto || null
-        ]
-      );
+      // In production:
+      // const data = await fetchAPI('/nutritionists', {
+      //   method: 'POST',
+      //   body: JSON.stringify(nutritionist)
+      // });
       
-      const item = result.rows[0];
+      // For development:
+      const newNutritionist = {
+        ...nutritionist,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString()
+      };
+      
+      mockDatabase.nutritionists.push(newNutritionist);
+      mockDatabase.saveNutritionists();
+      
       return {
-        id: item.id,
-        nome: item.nome,
-        email: item.email,
-        crn: item.crn,
-        telefone: item.telefone,
-        especialidade: item.especialidade,
-        foto: item.foto,
-        createdAt: new Date(item.created_at)
+        ...newNutritionist,
+        createdAt: new Date(newNutritionist.createdAt)
       };
     } catch (error: any) {
       console.error('Error creating nutritionist:', error);
@@ -81,32 +126,26 @@ export const nutritionistService = {
   
   async update(id: string, nutritionist: Partial<Nutricionista>): Promise<Nutricionista> {
     try {
-      const result = await executeQuery(
-        `UPDATE nutritionists
-         SET nome = $1, email = $2, crn = $3, telefone = $4, especialidade = $5, foto = $6
-         WHERE id = $7
-         RETURNING *`,
-        [
-          nutritionist.nome,
-          nutritionist.email,
-          nutritionist.crn,
-          nutritionist.telefone || null,
-          nutritionist.especialidade || null,
-          nutritionist.foto || null,
-          id
-        ]
-      );
+      // In production:
+      // const data = await fetchAPI(`/nutritionists/${id}`, {
+      //   method: 'PUT',
+      //   body: JSON.stringify(nutritionist)
+      // });
       
-      const item = result.rows[0];
+      // For development:
+      const index = mockDatabase.nutritionists.findIndex(n => n.id === id);
+      if (index === -1) throw new Error(`Nutritionist with id ${id} not found`);
+      
+      mockDatabase.nutritionists[index] = {
+        ...mockDatabase.nutritionists[index],
+        ...nutritionist
+      };
+      
+      mockDatabase.saveNutritionists();
+      
       return {
-        id: item.id,
-        nome: item.nome,
-        email: item.email,
-        crn: item.crn,
-        telefone: item.telefone,
-        especialidade: item.especialidade,
-        foto: item.foto,
-        createdAt: new Date(item.created_at)
+        ...mockDatabase.nutritionists[index],
+        createdAt: new Date(mockDatabase.nutritionists[index].createdAt)
       };
     } catch (error: any) {
       console.error(`Error updating nutritionist with id ${id}:`, error);
@@ -116,7 +155,17 @@ export const nutritionistService = {
   
   async delete(id: string): Promise<void> {
     try {
-      await executeQuery('DELETE FROM nutritionists WHERE id = $1', [id]);
+      // In production:
+      // await fetchAPI(`/nutritionists/${id}`, {
+      //   method: 'DELETE'
+      // });
+      
+      // For development:
+      const index = mockDatabase.nutritionists.findIndex(n => n.id === id);
+      if (index !== -1) {
+        mockDatabase.nutritionists.splice(index, 1);
+        mockDatabase.saveNutritionists();
+      }
     } catch (error: any) {
       console.error(`Error deleting nutritionist with id ${id}:`, error);
       throw new Error(error.message);
@@ -124,24 +173,15 @@ export const nutritionistService = {
   }
 };
 
-// Patient Services
+// Patient Services - Implementation similar to nutritionist service
 export const patientService = {
   async getAll(): Promise<Paciente[]> {
     try {
-      const result = await executeQuery('SELECT * FROM patients', []);
-      
-      return result.rows.map((item: any) => ({
-        id: item.id,
-        nutricionistaId: item.nutricionista_id,
-        nome: item.nome,
-        email: item.email,
-        dataNascimento: new Date(item.data_nascimento),
-        sexo: item.sexo,
-        telefone: item.telefone,
-        endereco: item.endereco,
-        observacoes: item.observacoes,
-        foto: item.foto,
-        createdAt: new Date(item.created_at)
+      // For development:
+      return mockDatabase.patients.map(item => ({
+        ...item,
+        dataNascimento: new Date(item.dataNascimento),
+        createdAt: new Date(item.createdAt)
       }));
     } catch (error: any) {
       console.error('Error fetching patients:', error);
@@ -151,23 +191,13 @@ export const patientService = {
   
   async getById(id: string): Promise<Paciente | null> {
     try {
-      const result = await executeQuery('SELECT * FROM patients WHERE id = $1', [id]);
+      const item = mockDatabase.patients.find(p => p.id === id);
+      if (!item) return null;
       
-      if (result.rows.length === 0) return null;
-      
-      const item = result.rows[0];
       return {
-        id: item.id,
-        nutricionistaId: item.nutricionista_id,
-        nome: item.nome,
-        email: item.email,
-        dataNascimento: new Date(item.data_nascimento),
-        sexo: item.sexo,
-        telefone: item.telefone,
-        endereco: item.endereco,
-        observacoes: item.observacoes,
-        foto: item.foto,
-        createdAt: new Date(item.created_at)
+        ...item,
+        dataNascimento: new Date(item.dataNascimento),
+        createdAt: new Date(item.createdAt)
       };
     } catch (error: any) {
       console.error(`Error fetching patient with id ${id}:`, error);
@@ -177,38 +207,20 @@ export const patientService = {
   
   async create(patient: Omit<Paciente, 'id' | 'createdAt'>): Promise<Paciente> {
     try {
-      const result = await executeQuery(
-        `INSERT INTO patients (
-          nutricionista_id, nome, email, data_nascimento, sexo, 
-          telefone, endereco, observacoes, foto
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING *`,
-        [
-          patient.nutricionistaId,
-          patient.nome,
-          patient.email,
-          patient.dataNascimento.toISOString(),
-          patient.sexo,
-          patient.telefone || null,
-          patient.endereco || null,
-          patient.observacoes || null,
-          patient.foto || null
-        ]
-      );
+      const newPatient = {
+        ...patient,
+        id: Date.now().toString(),
+        createdAt: new Date().toISOString(),
+        dataNascimento: patient.dataNascimento.toISOString()
+      };
       
-      const item = result.rows[0];
+      mockDatabase.patients.push(newPatient);
+      mockDatabase.savePatients();
+      
       return {
-        id: item.id,
-        nutricionistaId: item.nutricionista_id,
-        nome: item.nome,
-        email: item.email,
-        dataNascimento: new Date(item.data_nascimento),
-        sexo: item.sexo,
-        telefone: item.telefone,
-        endereco: item.endereco,
-        observacoes: item.observacoes,
-        foto: item.foto,
-        createdAt: new Date(item.created_at)
+        ...newPatient,
+        dataNascimento: new Date(newPatient.dataNascimento),
+        createdAt: new Date(newPatient.createdAt)
       };
     } catch (error: any) {
       console.error('Error creating patient:', error);
@@ -218,39 +230,26 @@ export const patientService = {
   
   async update(id: string, patient: Partial<Paciente>): Promise<Paciente> {
     try {
-      const result = await executeQuery(
-        `UPDATE patients
-         SET nutricionista_id = $1, nome = $2, email = $3, data_nascimento = $4,
-             sexo = $5, telefone = $6, endereco = $7, observacoes = $8, foto = $9
-         WHERE id = $10
-         RETURNING *`,
-        [
-          patient.nutricionistaId,
-          patient.nome,
-          patient.email,
-          patient.dataNascimento?.toISOString(),
-          patient.sexo,
-          patient.telefone || null,
-          patient.endereco || null,
-          patient.observacoes || null,
-          patient.foto || null,
-          id
-        ]
-      );
+      const index = mockDatabase.patients.findIndex(p => p.id === id);
+      if (index === -1) throw new Error(`Patient with id ${id} not found`);
       
-      const item = result.rows[0];
+      // Handle date conversion for storage
+      const updatedPatient = { ...patient };
+      if (updatedPatient.dataNascimento) {
+        updatedPatient.dataNascimento = updatedPatient.dataNascimento.toISOString();
+      }
+      
+      mockDatabase.patients[index] = {
+        ...mockDatabase.patients[index],
+        ...updatedPatient
+      };
+      
+      mockDatabase.savePatients();
+      
       return {
-        id: item.id,
-        nutricionistaId: item.nutricionista_id,
-        nome: item.nome,
-        email: item.email,
-        dataNascimento: new Date(item.data_nascimento),
-        sexo: item.sexo,
-        telefone: item.telefone,
-        endereco: item.endereco,
-        observacoes: item.observacoes,
-        foto: item.foto,
-        createdAt: new Date(item.created_at)
+        ...mockDatabase.patients[index],
+        dataNascimento: new Date(mockDatabase.patients[index].dataNascimento),
+        createdAt: new Date(mockDatabase.patients[index].createdAt)
       };
     } catch (error: any) {
       console.error(`Error updating patient with id ${id}:`, error);
@@ -260,7 +259,11 @@ export const patientService = {
   
   async delete(id: string): Promise<void> {
     try {
-      await executeQuery('DELETE FROM patients WHERE id = $1', [id]);
+      const index = mockDatabase.patients.findIndex(p => p.id === id);
+      if (index !== -1) {
+        mockDatabase.patients.splice(index, 1);
+        mockDatabase.savePatients();
+      }
     } catch (error: any) {
       console.error(`Error deleting patient with id ${id}:`, error);
       throw new Error(error.message);
