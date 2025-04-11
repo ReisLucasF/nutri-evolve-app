@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProtectedRoute } from '../hooks/useProtectedRoute';
 import { 
@@ -18,50 +18,52 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { toast } from '@/hooks/use-toast';
 import Button from '@/components/Button';
 import { 
   UserPlus, 
   Search, 
   Edit, 
-  Trash2
+  Trash2,
+  Info
 } from 'lucide-react';
 import { Nutricionista } from '@/models';
+
+// Função auxiliar para carregar nutricionistas do localStorage
+const loadNutritionistsFromStorage = (): Nutricionista[] => {
+  const storedNutritionists = localStorage.getItem('nutritionists');
+  if (storedNutritionists) {
+    try {
+      // Convertendo datas de string para objeto Date
+      const nutritionists = JSON.parse(storedNutritionists);
+      return nutritionists.map((n: any) => ({
+        ...n,
+        createdAt: new Date(n.createdAt)
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar nutricionistas do localStorage:', error);
+      return [];
+    }
+  }
+  return [];
+};
+
+// Função auxiliar para salvar nutricionistas no localStorage
+const saveNutritionistsToStorage = (nutritionists: Nutricionista[]) => {
+  localStorage.setItem('nutritionists', JSON.stringify(nutritionists));
+};
 
 const Nutritionists = () => {
   useProtectedRoute({ allowedRoles: ['admin'] });
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
+  const [nutritionists, setNutritionists] = useState<Nutricionista[]>([]);
   
-  // Dados de exemplo - seriam buscados do banco de dados
-  const [nutritionists, setNutritionists] = useState<Nutricionista[]>([
-    {
-      id: '1',
-      nome: 'Dr. Carlos Oliveira',
-      email: 'carlos@nutrievolve.app',
-      crn: 'CRN-3 12345',
-      telefone: '(11) 98765-4321',
-      especialidade: 'Nutrição Esportiva',
-      createdAt: new Date('2022-01-10')
-    },
-    {
-      id: '2',
-      nome: 'Dra. Juliana Santos',
-      email: 'juliana@nutrievolve.app',
-      crn: 'CRN-3 23456',
-      telefone: '(11) 91234-5678',
-      especialidade: 'Nutrição Clínica',
-      createdAt: new Date('2022-03-15')
-    },
-    {
-      id: '3',
-      nome: 'Dr. Rafael Mendes',
-      email: 'rafael@nutrievolve.app',
-      crn: 'CRN-3 34567',
-      telefone: '(11) 99876-5432',
-      especialidade: 'Nutrição Funcional',
-      createdAt: new Date('2022-06-20')
-    }
-  ]);
+  useEffect(() => {
+    // Carrega os nutricionistas do localStorage ao montar o componente
+    const loadedNutritionists = loadNutritionistsFromStorage();
+    setNutritionists(loadedNutritionists);
+  }, []);
 
   const filteredNutritionists = nutritionists.filter(nutritionist => 
     nutritionist.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -72,8 +74,14 @@ const Nutritionists = () => {
   const handleDelete = (id: string) => {
     // Confirmação antes de excluir
     if (window.confirm('Tem certeza que deseja excluir este nutricionista?')) {
-      // Aqui seria a chamada para a API
-      setNutritionists(nutritionists.filter(nutritionist => nutritionist.id !== id));
+      const updatedNutritionists = nutritionists.filter(nutritionist => nutritionist.id !== id);
+      setNutritionists(updatedNutritionists);
+      saveNutritionistsToStorage(updatedNutritionists);
+      
+      toast({
+        title: 'Nutricionista excluído',
+        description: 'O nutricionista foi removido com sucesso.'
+      });
     }
   };
 
@@ -87,7 +95,7 @@ const Nutritionists = () => {
           </p>
         </div>
         <Button variant="primary" onClick={() => navigate('/admin/nutricionistas/novo')}>
-          <UserPlus size={18} />
+          <UserPlus size={18} className="mr-2" />
           Novo Nutricionista
         </Button>
       </div>
@@ -150,7 +158,19 @@ const Nutritionists = () => {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-4">
-                    Nenhum nutricionista encontrado
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Info className="h-8 w-8 mb-2" />
+                      <p>Nenhum nutricionista encontrado</p>
+                      {nutritionists.length === 0 && (
+                        <Button 
+                          variant="link" 
+                          onClick={() => navigate('/admin/nutricionistas/novo')}
+                          className="mt-2"
+                        >
+                          Cadastrar o primeiro nutricionista
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               )}

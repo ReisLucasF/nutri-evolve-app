@@ -35,15 +35,22 @@ interface PatientFormData {
   observacoes: string;
 }
 
-const PatientForm = () => {
-  useProtectedRoute({ allowedRoles: ['nutritionist', 'admin'] });
-  const navigate = useNavigate();
-  const { id } = useParams();
-  const isEditing = Boolean(id);
+const loadPatientsFromStorage = (): Paciente[] => {
+  const storedPatients = localStorage.getItem('patients');
+  if (storedPatients) {
+    try {
+      const patients = JSON.parse(storedPatients);
+      return patients.map((p: any) => ({
+        ...p,
+        dataNascimento: new Date(p.dataNascimento),
+        createdAt: new Date(p.createdAt)
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar pacientes do localStorage:', error);
+      return [];
+    }
+  }
   
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm<PatientFormData>();
-  const [isLoading, setIsLoading] = useState(false);
-
   const samplePatients: Paciente[] = [
     {
       id: '1',
@@ -70,12 +77,33 @@ const PatientForm = () => {
       createdAt: new Date('2023-02-05')
     }
   ];
+  
+  localStorage.setItem('patients', JSON.stringify(samplePatients));
+  return samplePatients;
+};
+
+const savePatientsToStorage = (patients: Paciente[]) => {
+  localStorage.setItem('patients', JSON.stringify(patients));
+};
+
+const PatientForm = () => {
+  useProtectedRoute({ allowedRoles: ['nutritionist', 'admin'] });
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = Boolean(id);
+  
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<PatientFormData>();
+  const [isLoading, setIsLoading] = useState(false);
+  const [patients, setPatients] = useState<Paciente[]>([]);
 
   useEffect(() => {
+    const loadedPatients = loadPatientsFromStorage();
+    setPatients(loadedPatients);
+    
     if (isEditing) {
       setIsLoading(true);
       
-      const patient = samplePatients.find(p => p.id === id);
+      const patient = loadedPatients.find(p => p.id === id);
       
       if (patient) {
         setValue('nome', patient.nome);
@@ -104,7 +132,44 @@ const PatientForm = () => {
     try {
       console.log('Submetendo dados:', data);
       
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (isEditing && id) {
+        const updatedPatients = patients.map(p => 
+          p.id === id 
+            ? {
+                ...p,
+                nome: data.nome,
+                email: data.email,
+                dataNascimento: new Date(data.dataNascimento),
+                sexo: data.sexo as 'masculino' | 'feminino' | 'outro',
+                telefone: data.telefone,
+                endereco: data.endereco,
+                observacoes: data.observacoes
+              } 
+            : p
+        );
+        
+        setPatients(updatedPatients);
+        savePatientsToStorage(updatedPatients);
+      } else {
+        const newPatient: Paciente = {
+          id: Date.now().toString(),
+          nutricionistaId: '1',
+          nome: data.nome,
+          email: data.email,
+          dataNascimento: new Date(data.dataNascimento),
+          sexo: data.sexo as 'masculino' | 'feminino' | 'outro',
+          telefone: data.telefone,
+          endereco: data.endereco,
+          observacoes: data.observacoes,
+          createdAt: new Date()
+        };
+        
+        const newPatients = [...patients, newPatient];
+        setPatients(newPatients);
+        savePatientsToStorage(newPatients);
+      }
       
       toast({
         title: `Paciente ${isEditing ? 'atualizado' : 'cadastrado'} com sucesso`,

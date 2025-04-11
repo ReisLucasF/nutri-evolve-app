@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useProtectedRoute } from '../hooks/useProtectedRoute';
 import { 
@@ -18,59 +18,54 @@ import {
   CardTitle 
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { toast } from '@/hooks/use-toast';
 import Button from '@/components/Button';
 import { 
   UserPlus, 
   Search, 
-  Edit, 
   Eye, 
-  Trash2, 
-  CalendarPlus 
+  Edit, 
+  Trash2,
+  Info
 } from 'lucide-react';
 import { Paciente } from '@/models';
+
+// Função auxiliar para carregar pacientes do localStorage
+const loadPatientsFromStorage = (): Paciente[] => {
+  const storedPatients = localStorage.getItem('patients');
+  if (storedPatients) {
+    try {
+      // Convertendo datas de string para objeto Date
+      const patients = JSON.parse(storedPatients);
+      return patients.map((p: any) => ({
+        ...p,
+        dataNascimento: new Date(p.dataNascimento),
+        createdAt: new Date(p.createdAt)
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar pacientes do localStorage:', error);
+      return [];
+    }
+  }
+  return [];
+};
+
+// Função auxiliar para salvar pacientes no localStorage
+const savePatientsToStorage = (patients: Paciente[]) => {
+  localStorage.setItem('patients', JSON.stringify(patients));
+};
 
 const Patients = () => {
   useProtectedRoute({ allowedRoles: ['nutritionist', 'admin'] });
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Dados de exemplo - seriam buscados do banco de dados
-  const [patients, setPatients] = useState<Paciente[]>([
-    {
-      id: '1',
-      nutricionistaId: '1',
-      nome: 'Maria Silva',
-      email: 'maria@exemplo.com',
-      dataNascimento: new Date('1990-05-15'),
-      sexo: 'feminino',
-      telefone: '(11) 98765-4321',
-      endereco: 'Rua das Flores, 123',
-      observacoes: 'Paciente com intolerância à lactose',
-      createdAt: new Date('2023-01-10')
-    },
-    {
-      id: '2',
-      nutricionistaId: '1',
-      nome: 'João Santos',
-      email: 'joao@exemplo.com',
-      dataNascimento: new Date('1985-08-22'),
-      sexo: 'masculino',
-      telefone: '(11) 91234-5678',
-      endereco: 'Av. Paulista, 1000',
-      observacoes: 'Atleta, foco em ganho de massa muscular',
-      createdAt: new Date('2023-02-05')
-    },
-    {
-      id: '3',
-      nutricionistaId: '1',
-      nome: 'Ana Oliveira',
-      email: 'ana@exemplo.com',
-      dataNascimento: new Date('1995-03-18'),
-      sexo: 'feminino',
-      telefone: '(11) 99876-5432',
-      createdAt: new Date('2023-03-20')
-    }
-  ]);
+  const [patients, setPatients] = useState<Paciente[]>([]);
+
+  useEffect(() => {
+    // Carrega os pacientes do localStorage ao montar o componente
+    const loadedPatients = loadPatientsFromStorage();
+    setPatients(loadedPatients);
+  }, []);
 
   const filteredPatients = patients.filter(patient => 
     patient.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -78,10 +73,15 @@ const Patients = () => {
   );
 
   const handleDelete = (id: string) => {
-    // Confirmação antes de excluir
     if (window.confirm('Tem certeza que deseja excluir este paciente?')) {
-      // Aqui seria a chamada para a API
-      setPatients(patients.filter(patient => patient.id !== id));
+      const updatedPatients = patients.filter(patient => patient.id !== id);
+      setPatients(updatedPatients);
+      savePatientsToStorage(updatedPatients);
+      
+      toast({
+        title: 'Paciente excluído',
+        description: 'O paciente foi removido com sucesso.'
+      });
     }
   };
 
@@ -95,7 +95,7 @@ const Patients = () => {
           </p>
         </div>
         <Button variant="primary" onClick={() => navigate('/pacientes/novo')}>
-          <UserPlus size={18} />
+          <UserPlus size={18} className="mr-2" />
           Novo Paciente
         </Button>
       </div>
@@ -125,7 +125,7 @@ const Patients = () => {
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Telefone</TableHead>
-                <TableHead>Data de Nascimento</TableHead>
+                <TableHead>Sexo</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -137,12 +137,13 @@ const Patients = () => {
                     <TableCell>{patient.email}</TableCell>
                     <TableCell>{patient.telefone || '-'}</TableCell>
                     <TableCell>
-                      {patient.dataNascimento.toLocaleDateString('pt-BR')}
+                      {patient.sexo === 'masculino' ? 'Masculino' : 
+                       patient.sexo === 'feminino' ? 'Feminino' : 'Outro'}
                     </TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button 
                         variant="outline" 
-                        size="icon" 
+                        size="icon"
                         onClick={() => navigate(`/pacientes/${patient.id}`)}
                       >
                         <Eye className="h-4 w-4" />
@@ -157,13 +158,6 @@ const Patients = () => {
                       <Button 
                         variant="outline" 
                         size="icon"
-                        onClick={() => navigate(`/agendamentos/novo?pacienteId=${patient.id}`)}
-                      >
-                        <CalendarPlus className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="icon"
                         onClick={() => handleDelete(patient.id)}
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
@@ -174,7 +168,19 @@ const Patients = () => {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-4">
-                    Nenhum paciente encontrado
+                    <div className="flex flex-col items-center justify-center text-muted-foreground">
+                      <Info className="h-8 w-8 mb-2" />
+                      <p>Nenhum paciente encontrado</p>
+                      {patients.length === 0 && (
+                        <Button 
+                          variant="link" 
+                          onClick={() => navigate('/pacientes/novo')}
+                          className="mt-2"
+                        >
+                          Cadastrar o primeiro paciente
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               )}

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -28,16 +27,21 @@ interface NutritionistFormData {
   confirmarSenha?: string;
 }
 
-const NutritionistForm = () => {
-  useProtectedRoute({ allowedRoles: ['admin'] });
-  const navigate = useNavigate();
-  const { id } = useParams();
-  const isEditing = Boolean(id);
+const loadNutritionistsFromStorage = (): Nutricionista[] => {
+  const storedNutritionists = localStorage.getItem('nutritionists');
+  if (storedNutritionists) {
+    try {
+      const nutritionists = JSON.parse(storedNutritionists);
+      return nutritionists.map((n: any) => ({
+        ...n,
+        createdAt: new Date(n.createdAt)
+      }));
+    } catch (error) {
+      console.error('Erro ao carregar nutricionistas do localStorage:', error);
+      return [];
+    }
+  }
   
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<NutritionistFormData>();
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Dados de exemplo - seriam buscados do banco de dados
   const sampleNutritionists: Nutricionista[] = [
     {
       id: '1',
@@ -58,13 +62,33 @@ const NutritionistForm = () => {
       createdAt: new Date('2022-03-15')
     }
   ];
+  
+  localStorage.setItem('nutritionists', JSON.stringify(sampleNutritionists));
+  return sampleNutritionists;
+};
+
+const saveNutritionistsToStorage = (nutritionists: Nutricionista[]) => {
+  localStorage.setItem('nutritionists', JSON.stringify(nutritionists));
+};
+
+const NutritionistForm = () => {
+  useProtectedRoute({ allowedRoles: ['admin'] });
+  const navigate = useNavigate();
+  const { id } = useParams();
+  const isEditing = Boolean(id);
+  
+  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<NutritionistFormData>();
+  const [isLoading, setIsLoading] = useState(false);
+  const [nutritionists, setNutritionists] = useState<Nutricionista[]>([]);
 
   useEffect(() => {
+    const loadedNutritionists = loadNutritionistsFromStorage();
+    setNutritionists(loadedNutritionists);
+    
     if (isEditing) {
       setIsLoading(true);
       
-      // Simulando busca do nutricionista pelo ID
-      const nutritionist = sampleNutritionists.find(n => n.id === id);
+      const nutritionist = loadedNutritionists.find(n => n.id === id);
       
       if (nutritionist) {
         setValue('nome', nutritionist.nome);
@@ -89,16 +113,45 @@ const NutritionistForm = () => {
     setIsLoading(true);
     
     try {
-      // Verificar se as senhas correspondem ao cadastrar novo nutricionista
       if (!isEditing && data.senha !== data.confirmarSenha) {
         throw new Error('As senhas não correspondem');
       }
       
-      // Aqui seria feita a chamada para a API
       console.log('Submetendo dados:', data);
       
-      // Simulando a chamada de API
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (isEditing && id) {
+        const updatedNutritionists = nutritionists.map(n => 
+          n.id === id 
+            ? {
+                ...n,
+                nome: data.nome,
+                email: data.email,
+                crn: data.crn,
+                telefone: data.telefone,
+                especialidade: data.especialidade
+              } 
+            : n
+        );
+        
+        setNutritionists(updatedNutritionists);
+        saveNutritionistsToStorage(updatedNutritionists);
+      } else {
+        const newNutritionist: Nutricionista = {
+          id: Date.now().toString(),
+          nome: data.nome,
+          email: data.email,
+          crn: data.crn,
+          telefone: data.telefone,
+          especialidade: data.especialidade,
+          createdAt: new Date()
+        };
+        
+        const newNutritionists = [...nutritionists, newNutritionist];
+        setNutritionists(newNutritionists);
+        saveNutritionistsToStorage(newNutritionists);
+      }
       
       toast({
         title: `Nutricionista ${isEditing ? 'atualizado' : 'cadastrado'} com sucesso`,
@@ -157,6 +210,7 @@ const NutritionistForm = () => {
                 <Input 
                   id="nome" 
                   {...register('nome', { required: true })}
+                  className={errors.nome ? "border-destructive" : ""}
                 />
                 {errors.nome && (
                   <p className="text-sm text-destructive">Nome é obrigatório</p>
@@ -172,6 +226,7 @@ const NutritionistForm = () => {
                     required: true,
                     pattern: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i
                   })}
+                  className={errors.email ? "border-destructive" : ""}
                 />
                 {errors.email && (
                   <p className="text-sm text-destructive">Email válido é obrigatório</p>
@@ -183,6 +238,7 @@ const NutritionistForm = () => {
                 <Input 
                   id="crn" 
                   {...register('crn', { required: true })}
+                  className={errors.crn ? "border-destructive" : ""}
                 />
                 {errors.crn && (
                   <p className="text-sm text-destructive">CRN é obrigatório</p>
@@ -214,6 +270,7 @@ const NutritionistForm = () => {
                     id="senha" 
                     type="password" 
                     {...register('senha', { required: !isEditing })}
+                    className={errors.senha ? "border-destructive" : ""}
                   />
                   {errors.senha && (
                     <p className="text-sm text-destructive">Senha é obrigatória</p>
@@ -229,6 +286,7 @@ const NutritionistForm = () => {
                       required: !isEditing,
                       validate: value => !value || !senha || value === senha || 'As senhas não correspondem'
                     })}
+                    className={errors.confirmarSenha ? "border-destructive" : ""}
                   />
                   {errors.confirmarSenha && (
                     <p className="text-sm text-destructive">
