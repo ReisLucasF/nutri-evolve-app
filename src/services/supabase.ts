@@ -1,112 +1,124 @@
 
-import { createClient } from '@supabase/supabase-js';
 import { Nutricionista, Paciente } from '@/models';
-
-// Supabase connection
-const supabaseUrl = 'https://supabase-public-url.supabase.co';
-const supabaseKey = 'your-public-anon-key';
-
-// Database connection string (for reference only, not used directly in frontend)
-// const connectionString = 'postgresql://nutriappdb_owner:npg_GSmYLI80pQMs@ep-green-fog-acl7wliu-pooler.sa-east-1.aws.neon.tech/nutriappdb?sslmode=require';
-
-export const supabase = createClient(supabaseUrl, supabaseKey);
+const database = require('./database.js');
 
 // Nutritionist Services
 export const nutritionistService = {
   async getAll(): Promise<Nutricionista[]> {
-    const { data, error } = await supabase
-      .from('nutritionists')
-      .select('*');
-    
-    if (error) {
+    try {
+      const result = await database.executeQuery('SELECT * FROM nutritionists', []);
+      
+      return result.rows.map((item: any) => ({
+        id: item.id,
+        nome: item.nome,
+        email: item.email,
+        crn: item.crn,
+        telefone: item.telefone,
+        especialidade: item.especialidade,
+        foto: item.foto,
+        createdAt: new Date(item.created_at)
+      }));
+    } catch (error: any) {
       console.error('Error fetching nutritionists:', error);
       throw new Error(error.message);
     }
-    
-    return data.map((item: any) => ({
-      ...item,
-      createdAt: new Date(item.created_at)
-    }));
   },
   
   async getById(id: string): Promise<Nutricionista | null> {
-    const { data, error } = await supabase
-      .from('nutritionists')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) {
+    try {
+      const result = await database.executeQuery('SELECT * FROM nutritionists WHERE id = $1', [id]);
+      
+      if (result.rows.length === 0) return null;
+      
+      const item = result.rows[0];
+      return {
+        id: item.id,
+        nome: item.nome,
+        email: item.email,
+        crn: item.crn,
+        telefone: item.telefone,
+        especialidade: item.especialidade,
+        foto: item.foto,
+        createdAt: new Date(item.created_at)
+      };
+    } catch (error: any) {
       console.error(`Error fetching nutritionist with id ${id}:`, error);
       throw new Error(error.message);
     }
-    
-    if (!data) return null;
-    
-    return {
-      ...data,
-      createdAt: new Date(data.created_at)
-    };
   },
   
   async create(nutritionist: Omit<Nutricionista, 'id' | 'createdAt'>): Promise<Nutricionista> {
-    const { data, error } = await supabase
-      .from('nutritionists')
-      .insert([{
-        nome: nutritionist.nome,
-        email: nutritionist.email,
-        crn: nutritionist.crn,
-        telefone: nutritionist.telefone || null,
-        especialidade: nutritionist.especialidade || null,
-        foto: nutritionist.foto || null,
-      }])
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const result = await database.executeQuery(
+        `INSERT INTO nutritionists (nome, email, crn, telefone, especialidade, foto)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING *`,
+        [
+          nutritionist.nome,
+          nutritionist.email,
+          nutritionist.crn,
+          nutritionist.telefone || null,
+          nutritionist.especialidade || null,
+          nutritionist.foto || null
+        ]
+      );
+      
+      const item = result.rows[0];
+      return {
+        id: item.id,
+        nome: item.nome,
+        email: item.email,
+        crn: item.crn,
+        telefone: item.telefone,
+        especialidade: item.especialidade,
+        foto: item.foto,
+        createdAt: new Date(item.created_at)
+      };
+    } catch (error: any) {
       console.error('Error creating nutritionist:', error);
       throw new Error(error.message);
     }
-    
-    return {
-      ...data,
-      createdAt: new Date(data.created_at)
-    };
   },
   
   async update(id: string, nutritionist: Partial<Nutricionista>): Promise<Nutricionista> {
-    const { data, error } = await supabase
-      .from('nutritionists')
-      .update({
-        nome: nutritionist.nome,
-        email: nutritionist.email,
-        crn: nutritionist.crn,
-        telefone: nutritionist.telefone || null,
-        especialidade: nutritionist.especialidade || null,
-        foto: nutritionist.foto || null,
-      })
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const result = await database.executeQuery(
+        `UPDATE nutritionists
+         SET nome = $1, email = $2, crn = $3, telefone = $4, especialidade = $5, foto = $6
+         WHERE id = $7
+         RETURNING *`,
+        [
+          nutritionist.nome,
+          nutritionist.email,
+          nutritionist.crn,
+          nutritionist.telefone || null,
+          nutritionist.especialidade || null,
+          nutritionist.foto || null,
+          id
+        ]
+      );
+      
+      const item = result.rows[0];
+      return {
+        id: item.id,
+        nome: item.nome,
+        email: item.email,
+        crn: item.crn,
+        telefone: item.telefone,
+        especialidade: item.especialidade,
+        foto: item.foto,
+        createdAt: new Date(item.created_at)
+      };
+    } catch (error: any) {
       console.error(`Error updating nutritionist with id ${id}:`, error);
       throw new Error(error.message);
     }
-    
-    return {
-      ...data,
-      createdAt: new Date(data.created_at)
-    };
   },
   
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('nutritionists')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
+    try {
+      await database.executeQuery('DELETE FROM nutritionists WHERE id = $1', [id]);
+    } catch (error: any) {
       console.error(`Error deleting nutritionist with id ${id}:`, error);
       throw new Error(error.message);
     }
@@ -116,111 +128,141 @@ export const nutritionistService = {
 // Patient Services
 export const patientService = {
   async getAll(): Promise<Paciente[]> {
-    const { data, error } = await supabase
-      .from('patients')
-      .select('*');
-    
-    if (error) {
+    try {
+      const result = await database.executeQuery('SELECT * FROM patients', []);
+      
+      return result.rows.map((item: any) => ({
+        id: item.id,
+        nutricionistaId: item.nutricionista_id,
+        nome: item.nome,
+        email: item.email,
+        dataNascimento: new Date(item.data_nascimento),
+        sexo: item.sexo,
+        telefone: item.telefone,
+        endereco: item.endereco,
+        observacoes: item.observacoes,
+        foto: item.foto,
+        createdAt: new Date(item.created_at)
+      }));
+    } catch (error: any) {
       console.error('Error fetching patients:', error);
       throw new Error(error.message);
     }
-    
-    return data.map((item: any) => ({
-      ...item,
-      dataNascimento: new Date(item.data_nascimento),
-      createdAt: new Date(item.created_at)
-    }));
   },
   
   async getById(id: string): Promise<Paciente | null> {
-    const { data, error } = await supabase
-      .from('patients')
-      .select('*')
-      .eq('id', id)
-      .single();
-    
-    if (error) {
+    try {
+      const result = await database.executeQuery('SELECT * FROM patients WHERE id = $1', [id]);
+      
+      if (result.rows.length === 0) return null;
+      
+      const item = result.rows[0];
+      return {
+        id: item.id,
+        nutricionistaId: item.nutricionista_id,
+        nome: item.nome,
+        email: item.email,
+        dataNascimento: new Date(item.data_nascimento),
+        sexo: item.sexo,
+        telefone: item.telefone,
+        endereco: item.endereco,
+        observacoes: item.observacoes,
+        foto: item.foto,
+        createdAt: new Date(item.created_at)
+      };
+    } catch (error: any) {
       console.error(`Error fetching patient with id ${id}:`, error);
       throw new Error(error.message);
     }
-    
-    if (!data) return null;
-    
-    return {
-      ...data,
-      dataNascimento: new Date(data.data_nascimento),
-      createdAt: new Date(data.created_at)
-    };
   },
   
   async create(patient: Omit<Paciente, 'id' | 'createdAt'>): Promise<Paciente> {
-    const { data, error } = await supabase
-      .from('patients')
-      .insert([{
-        nutricionista_id: patient.nutricionistaId,
-        nome: patient.nome,
-        email: patient.email,
-        data_nascimento: patient.dataNascimento.toISOString(),
-        sexo: patient.sexo,
-        telefone: patient.telefone || null,
-        endereco: patient.endereco || null,
-        observacoes: patient.observacoes || null,
-        foto: patient.foto || null,
-      }])
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const result = await database.executeQuery(
+        `INSERT INTO patients (
+          nutricionista_id, nome, email, data_nascimento, sexo, 
+          telefone, endereco, observacoes, foto
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        RETURNING *`,
+        [
+          patient.nutricionistaId,
+          patient.nome,
+          patient.email,
+          patient.dataNascimento.toISOString(),
+          patient.sexo,
+          patient.telefone || null,
+          patient.endereco || null,
+          patient.observacoes || null,
+          patient.foto || null
+        ]
+      );
+      
+      const item = result.rows[0];
+      return {
+        id: item.id,
+        nutricionistaId: item.nutricionista_id,
+        nome: item.nome,
+        email: item.email,
+        dataNascimento: new Date(item.data_nascimento),
+        sexo: item.sexo,
+        telefone: item.telefone,
+        endereco: item.endereco,
+        observacoes: item.observacoes,
+        foto: item.foto,
+        createdAt: new Date(item.created_at)
+      };
+    } catch (error: any) {
       console.error('Error creating patient:', error);
       throw new Error(error.message);
     }
-    
-    return {
-      ...data,
-      nutricionistaId: data.nutricionista_id,
-      dataNascimento: new Date(data.data_nascimento),
-      createdAt: new Date(data.created_at)
-    };
   },
   
   async update(id: string, patient: Partial<Paciente>): Promise<Paciente> {
-    const { data, error } = await supabase
-      .from('patients')
-      .update({
-        nutricionista_id: patient.nutricionistaId,
-        nome: patient.nome,
-        email: patient.email,
-        data_nascimento: patient.dataNascimento?.toISOString(),
-        sexo: patient.sexo,
-        telefone: patient.telefone || null,
-        endereco: patient.endereco || null,
-        observacoes: patient.observacoes || null,
-        foto: patient.foto || null,
-      })
-      .eq('id', id)
-      .select()
-      .single();
-    
-    if (error) {
+    try {
+      const result = await database.executeQuery(
+        `UPDATE patients
+         SET nutricionista_id = $1, nome = $2, email = $3, data_nascimento = $4,
+             sexo = $5, telefone = $6, endereco = $7, observacoes = $8, foto = $9
+         WHERE id = $10
+         RETURNING *`,
+        [
+          patient.nutricionistaId,
+          patient.nome,
+          patient.email,
+          patient.dataNascimento?.toISOString(),
+          patient.sexo,
+          patient.telefone || null,
+          patient.endereco || null,
+          patient.observacoes || null,
+          patient.foto || null,
+          id
+        ]
+      );
+      
+      const item = result.rows[0];
+      return {
+        id: item.id,
+        nutricionistaId: item.nutricionista_id,
+        nome: item.nome,
+        email: item.email,
+        dataNascimento: new Date(item.data_nascimento),
+        sexo: item.sexo,
+        telefone: item.telefone,
+        endereco: item.endereco,
+        observacoes: item.observacoes,
+        foto: item.foto,
+        createdAt: new Date(item.created_at)
+      };
+    } catch (error: any) {
       console.error(`Error updating patient with id ${id}:`, error);
       throw new Error(error.message);
     }
-    
-    return {
-      ...data,
-      nutricionistaId: data.nutricionista_id,
-      dataNascimento: new Date(data.data_nascimento),
-      createdAt: new Date(data.created_at)
-    };
   },
   
   async delete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('patients')
-      .delete()
-      .eq('id', id);
-    
-    if (error) {
+    try {
+      await database.executeQuery('DELETE FROM patients WHERE id = $1', [id]);
+    } catch (error: any) {
       console.error(`Error deleting patient with id ${id}:`, error);
       throw new Error(error.message);
     }

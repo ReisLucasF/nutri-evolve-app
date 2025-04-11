@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -53,15 +52,15 @@ const NutritionistForm = () => {
           setValue('telefone', data.telefone || '');
           setValue('especialidade', data.especialidade || '');
         }
+      },
+      onError: (error: any) => {
+        toast({
+          title: 'Erro',
+          description: error.message || 'Não foi possível carregar os dados do nutricionista',
+          variant: 'destructive'
+        });
+        navigate('/admin/nutricionistas');
       }
-    },
-    onError: (error: any) => {
-      toast({
-        title: 'Erro',
-        description: error.message || 'Não foi possível carregar os dados do nutricionista',
-        variant: 'destructive'
-      });
-      navigate('/admin/nutricionistas');
     }
   });
 
