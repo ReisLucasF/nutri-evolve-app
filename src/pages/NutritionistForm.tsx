@@ -44,13 +44,15 @@ const NutritionistForm = () => {
     queryKey: ['nutritionist', id],
     queryFn: () => id ? nutritionistService.getById(id) : null,
     enabled: isEditing,
-    onSuccess: (data) => {
-      if (data) {
-        setValue('nome', data.nome);
-        setValue('email', data.email);
-        setValue('crn', data.crn);
-        setValue('telefone', data.telefone || '');
-        setValue('especialidade', data.especialidade || '');
+    meta: {
+      onSuccess: (data: Nutricionista | null) => {
+        if (data) {
+          setValue('nome', data.nome);
+          setValue('email', data.email);
+          setValue('crn', data.crn);
+          setValue('telefone', data.telefone || '');
+          setValue('especialidade', data.especialidade || '');
+        }
       }
     },
     onError: (error: any) => {
