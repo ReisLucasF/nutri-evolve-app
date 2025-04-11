@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -45,7 +44,6 @@ const PatientForm = () => {
   const { register, handleSubmit, setValue, formState: { errors } } = useForm<PatientFormData>();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Dados de exemplo - seriam buscados do banco de dados
   const samplePatients: Paciente[] = [
     {
       id: '1',
@@ -77,7 +75,6 @@ const PatientForm = () => {
     if (isEditing) {
       setIsLoading(true);
       
-      // Simulando busca do paciente pelo ID
       const patient = samplePatients.find(p => p.id === id);
       
       if (patient) {
@@ -105,10 +102,8 @@ const PatientForm = () => {
     setIsLoading(true);
     
     try {
-      // Aqui seria feita a chamada para a API
       console.log('Submetendo dados:', data);
       
-      // Simulando a chamada de API
       await new Promise(resolve => setTimeout(resolve, 1000));
       
       toast({
@@ -160,7 +155,7 @@ const PatientForm = () => {
                 <Input 
                   id="nome" 
                   {...register('nome', { required: true })}
-                  error={errors.nome ? 'Nome é obrigatório' : undefined}
+                  className={errors.nome ? "border-destructive" : ""}
                 />
                 {errors.nome && (
                   <p className="text-sm text-destructive">Nome é obrigatório</p>
@@ -176,6 +171,7 @@ const PatientForm = () => {
                     required: true,
                     pattern: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i
                   })}
+                  className={errors.email ? "border-destructive" : ""}
                 />
                 {errors.email && (
                   <p className="text-sm text-destructive">Email válido é obrigatório</p>
@@ -196,6 +192,7 @@ const PatientForm = () => {
                   id="dataNascimento" 
                   type="date" 
                   {...register('dataNascimento', { required: true })}
+                  className={errors.dataNascimento ? "border-destructive" : ""}
                 />
                 {errors.dataNascimento && (
                   <p className="text-sm text-destructive">Data de nascimento é obrigatória</p>

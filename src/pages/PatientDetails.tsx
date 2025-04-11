@@ -26,7 +26,8 @@ import {
   LineChart, 
   Plus, 
   CalendarPlus,
-  Download
+  Download,
+  Eye
 } from 'lucide-react';
 import { Paciente, DadoAntropometrico, Consulta, PlanoAlimentar } from '@/models';
 
