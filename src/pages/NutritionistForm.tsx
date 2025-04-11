@@ -36,33 +36,27 @@ const NutritionistForm = () => {
   const isEditing = Boolean(id);
   const queryClient = useQueryClient();
   
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<NutritionistFormData>();
+  const { register, handleSubmit, setValue, watch, reset, formState: { errors } } = useForm<NutritionistFormData>();
 
   // Fetch nutritionist data if editing
   const { data: nutritionist, isLoading: isLoadingNutritionist } = useQuery({
     queryKey: ['nutritionist', id],
     queryFn: () => id ? nutritionistService.getById(id) : null,
-    enabled: isEditing,
-    meta: {
-      onSuccess: (data: Nutricionista | null) => {
-        if (data) {
-          setValue('nome', data.nome);
-          setValue('email', data.email);
-          setValue('crn', data.crn);
-          setValue('telefone', data.telefone || '');
-          setValue('especialidade', data.especialidade || '');
-        }
-      },
-      onError: (error: any) => {
-        toast({
-          title: 'Erro',
-          description: error.message || 'Não foi possível carregar os dados do nutricionista',
-          variant: 'destructive'
-        });
-        navigate('/admin/nutricionistas');
-      }
-    }
+    enabled: isEditing
   });
+
+  // Set form values when nutritionist data is loaded
+  useEffect(() => {
+    if (nutritionist) {
+      reset({
+        nome: nutritionist.nome,
+        email: nutritionist.email,
+        crn: nutritionist.crn,
+        telefone: nutritionist.telefone || '',
+        especialidade: nutritionist.especialidade || '',
+      });
+    }
+  }, [nutritionist, reset]);
 
   // Create mutation
   const createNutritionist = useMutation({
