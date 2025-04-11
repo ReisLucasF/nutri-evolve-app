@@ -3,6 +3,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { useProtectedRoute } from '../hooks/useProtectedRoute';
 import { Users, Calendar, TrendingUp } from 'lucide-react';
+import Button from '../components/Button'; // Add the Button import
 
 const Dashboard = () => {
   // Protege rota para apenas nutricionistas
